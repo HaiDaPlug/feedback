@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Brandmark } from '@/components/ui/Brandmark';
 import { Button } from '@/components/ui/Button';
 import { Iphone, IPHONE_ISLAND_INSET_PCT } from '@/components/ui/Iphone';
@@ -26,6 +26,7 @@ export function PreviewFrame({
   welcomeMessage,
   questions,
   className = '',
+  caption,
 }: {
   eventName: string;
   eventDate: string;
@@ -33,6 +34,8 @@ export function PreviewFrame({
   welcomeMessage: string | null;
   questions: FormQuestion[];
   className?: string;
+  /** Trailing content of the caption row, e.g. save controls in the workspace. */
+  caption?: ReactNode;
 }) {
   const [answers, setAnswers] = useState<AnswerMap>({});
   const shown = useMemo(() => visibleQuestions(questions, answers), [questions, answers]);
@@ -53,9 +56,9 @@ export function PreviewFrame({
 
   return (
     <div className={`w-full max-w-sm ${className}`}>
-      <div className="flex items-center justify-between gap-3 px-1">
+      <div className="flex min-h-9 items-center justify-between gap-3 px-1">
         <Eyebrow>Live preview</Eyebrow>
-        <span className="text-xs text-ink-faint">Nothing is saved</span>
+        {caption ?? <span className="text-xs text-ink-faint">Answers here aren&rsquo;t saved</span>}
       </div>
 
       <Iphone className="mt-3">

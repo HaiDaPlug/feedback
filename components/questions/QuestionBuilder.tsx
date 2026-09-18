@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QuestionEditor } from './QuestionEditor';
 import { Button } from '@/components/ui/Button';
-import { SaveIndicator, type SaveState } from '@/components/ui/SaveIndicator';
+import { SaveControls, type SaveControlsState } from '@/components/ui/SaveControls';
+import type { SaveState } from '@/components/ui/SaveIndicator';
 import { Eyebrow, Notice, SectionHeader } from '@/components/ui/Section';
 import { validateForm } from '@/lib/form/validate-form';
 import {
@@ -41,12 +42,20 @@ export function QuestionBuilder({
   initialQuestions,
   onSave,
   onQuestionsChange,
+  onSaveControlsChange,
 }: {
   eventId: string;
   initialQuestions: FormQuestion[];
   onSave: (eventId: string, input: { questions: unknown[] }) => Promise<SaveResult>;
   /** Mirrors every edit upward so the workspace can feed the live preview. */
   onQuestionsChange?: (questions: FormQuestion[]) => void;
+  /**
+   * Mirrors the save status and a save trigger upward. When provided, the
+   * workspace renders the controls beside the live preview on wide screens
+   * and this builder hides its own copy there (`xl:hidden`), so the controls
+   * exist exactly once at every width.
+   */
+  onSaveControlsChange?: (controls: SaveControlsState) => void;
 }) {
   const [questions, setQuestions] = useState<FormQuestion[]>(initialQuestions);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -126,6 +135,10 @@ export function QuestionBuilder({
     onQuestionsChange?.(questions);
   }, [questions, onQuestionsChange]);
 
+  useEffect(() => {
+    onSaveControlsChange?.({ state: saveState, dirty, save: () => void save(questions) });
+  }, [saveState, dirty, questions, save, onSaveControlsChange]);
+
   function addQuestion(type: QuestionType) {
     const needsOptions = type === 'single_choice' || type === 'multi_choice';
     setQuestions((prev) => [
@@ -200,18 +213,12 @@ export function QuestionBuilder({
             count > 0 ? `${count} ${count === 1 ? 'question' : 'questions'}` : undefined
           }
           actions={
-            <>
-              <SaveIndicator state={saveState} onRetry={() => void save(questions)} />
-              <Button
-                type="button"
-                variant={saveState === 'error' ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => void save(questions)}
-                disabled={!dirty || saveState === 'saving'}
-              >
-                Save
-              </Button>
-            </>
+            <SaveControls
+              state={saveState}
+              dirty={dirty}
+              save={() => void save(questions)}
+              className={onSaveControlsChange ? 'xl:hidden' : ''}
+            />
           }
         />
 

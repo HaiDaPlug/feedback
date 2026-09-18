@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { QuestionBuilder } from '@/components/questions/QuestionBuilder';
+import { SaveControls, type SaveControlsState } from '@/components/ui/SaveControls';
 import { EventDetailsForm, type EventDetails } from './EventDetailsForm';
 import { PreviewFrame } from './preview/PreviewFrame';
 import { saveQuestionsAction } from '../../actions';
@@ -26,6 +27,7 @@ export function EventWorkspace({
 }) {
   const [liveDetails, setLiveDetails] = useState(details);
   const [liveQuestions, setLiveQuestions] = useState(questions);
+  const [saveControls, setSaveControls] = useState<SaveControlsState | null>(null);
 
   return (
     <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start xl:gap-8">
@@ -36,10 +38,12 @@ export function EventWorkspace({
           initialQuestions={questions}
           onSave={saveQuestionsAction}
           onQuestionsChange={setLiveQuestions}
+          onSaveControlsChange={setSaveControls}
         />
       </div>
 
-      {/* Below xl the Preview tab covers this; here it tracks edits live. */}
+      {/* Below xl the Preview tab covers this; here it tracks edits live, and
+          the save status sits above the phone as the trust indicator. */}
       <aside className="hidden xl:sticky xl:top-6 xl:block xl:self-start" aria-label="Live preview">
         <PreviewFrame
           eventName={liveDetails.name}
@@ -47,6 +51,7 @@ export function EventWorkspace({
           location={liveDetails.location}
           welcomeMessage={liveDetails.welcomeMessage}
           questions={liveQuestions}
+          caption={saveControls ? <SaveControls {...saveControls} /> : undefined}
           // The phone's height follows its width, so cap the width by the
           // viewport height (minus the sticky offset and the caption row).
           className="xl:w-[min(24rem,calc((100dvh_-_6rem)*433/882))]"
