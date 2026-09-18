@@ -23,7 +23,7 @@ export default async function ModeratorLayout({
       <header className="border-b border-hairline bg-surface">
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:h-16 sm:px-6">
           <Link href="/dashboard" className="shrink-0 rounded-md">
-            <Brandmark showProductName />
+            <Brandmark />
           </Link>
 
           <div className="flex min-w-0 items-center gap-1 sm:gap-2">
