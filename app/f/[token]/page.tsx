@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { Brandmark } from '@/components/ui/Brandmark';
-import { Notice } from '@/components/ui/Section';
 import { FormLookupError, getFormByToken } from '@/lib/db/queries/participant';
 import { FeedbackForm } from './FeedbackForm';
 import { InvalidLink } from './InvalidLink';
@@ -100,33 +99,11 @@ export default async function ParticipantFormPage({
         )}
 
         {/*
-          Anonymity notice. Wording is deliberately honest: it does not promise
-          that written answers are impossible to identify, because a participant
-          can reveal themselves in free text.
+          No anonymity banner by design: the form never asks for identifying
+          fields, and the line under the submit button states that nothing
+          else is collected. Moderators are reminded not to ask for names on
+          the Questions tab instead.
         */}
-        <Notice tone="info">
-          <span className="flex gap-2.5">
-            <svg
-              aria-hidden="true"
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="mt-0.5 shrink-0 text-brand"
-            >
-              <rect x="3" y="7" width="10" height="7" rx="1.5" />
-              <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
-            </svg>
-            <span>
-              Your feedback is anonymous. Please avoid including your name or other
-              identifying details in your answers.
-            </span>
-          </span>
-        </Notice>
       </header>
 
       <FeedbackForm

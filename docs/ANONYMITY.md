@@ -4,10 +4,15 @@ This document exists so that nobody — moderator, participant, or future
 developer — has to guess how strong the anonymity promise is. It is deliberately
 honest about the limits.
 
-The participant-facing wording is exactly this, and nothing stronger:
+The participant-facing wording is exactly this, and nothing stronger. It sits
+under the submit button; there is no banner at the top of the form (removed
+2026-09-18 as a product decision, since the form never asks for identifying
+fields):
 
-> Your feedback is anonymous. Please avoid including your name or other
-> identifying details in your answers.
+> Anonymous. Nothing else is collected.
+
+Moderators, not participants, carry the reminder to avoid identifying
+questions: it is shown above the question list on the Questions tab.
 
 ---
 
@@ -93,9 +98,10 @@ Please read this section before describing the system to participants.
 
 **This is the most important limitation.** A participant who writes *"as the
 only person who joined from the Berlin office in March"* has identified
-themselves, and no amount of engineering prevents that. This is why the notice
-asks participants to avoid identifying details rather than promising the
-impossible.
+themselves, and no amount of engineering prevents that. This is why the
+participant-facing line says only that nothing else is collected, rather than
+promising the impossible, and why the moderator-side reminder asks not to
+invite identifying detail in the first place.
 
 **Do not tell participants that written responses cannot be traced to them.**
 

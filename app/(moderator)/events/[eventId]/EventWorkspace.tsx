@@ -47,7 +47,9 @@ export function EventWorkspace({
           location={liveDetails.location}
           welcomeMessage={liveDetails.welcomeMessage}
           questions={liveQuestions}
-          className="overflow-y-auto xl:max-h-[calc(100dvh-3rem)]"
+          // The phone's height follows its width, so cap the width by the
+          // viewport height (minus the sticky offset and the caption row).
+          className="xl:w-[min(24rem,calc((100dvh_-_6rem)*433/882))]"
         />
       </aside>
     </div>

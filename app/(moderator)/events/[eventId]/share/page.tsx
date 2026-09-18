@@ -9,15 +9,23 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Resolve the public base URL for building participant links.
- * APP_BASE_URL wins; otherwise fall back to the request host so local
- * development and preview deployments produce working links.
+ *
+ * The link follows the host the moderator is using right now, so the same
+ * code produces a working link on localhost, a tunnel, a preview deployment,
+ * and the production domain without any per-environment configuration.
+ * Proxies (Vercel, most hosts) pass the original host and scheme in the
+ * x-forwarded-* headers, which take precedence over the internal Host.
+ * APP_BASE_URL is only the fallback when no request headers are available;
+ * its main job is telling Auth.js which host to trust (lib/auth/config.ts).
  */
 async function resolveBaseUrl(): Promise<string> {
-  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL;
-
   const headerList = await headers();
-  const host = headerList.get('host') ?? 'localhost:3000';
-  const proto = headerList.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
+  const host = headerList.get('x-forwarded-host') ?? headerList.get('host');
+
+  if (!host) return process.env.APP_BASE_URL ?? 'http://localhost:3000';
+
+  const isLocal = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(host);
+  const proto = headerList.get('x-forwarded-proto') ?? (isLocal ? 'http' : 'https');
 
   return `${proto}://${host}`;
 }

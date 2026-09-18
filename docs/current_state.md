@@ -130,7 +130,7 @@ Rhythm rules the code follows: sections 40px apart, groups 24px, fields 16px, la
 ### What changed per area
 
 - **Question builder** (`QuestionEditor`, `QuestionBuilder`, `EventDetailsForm`, `EventWorkspace`): question text is the dominant field; type + required sit in a compact row; help text is revealed on demand; reorder/remove are quiet icon buttons; the conditional rule is a borderless well. At `xl:` the workspace is two columns with a **sticky live preview** fed from in-memory state (new optional `onQuestionsChange` / `onChange` callbacks; autosave untouched).
-- **Preview** (`PreviewFrame`): a single `card-raised` phone frame that mirrors the participant page exactly, including numbering and the anonymity notice.
+- **Preview** (`PreviewFrame`): an iPhone mockup (`components/ui/Iphone.tsx`, adapted from Magic UI with interactive `children` instead of media) whose screen mirrors the participant page exactly and scrolls internally. The participant anonymity banner was removed on 2026-09-18 at the user's request; the "Anonymous. Nothing else is collected." line under Submit remains.
 - **Participant form** (`QuestionRenderer`, `FeedbackForm`, `f/[token]/page.tsx`, thanks, invalid link): numbered questions, 18px labels, Lowest/Highest anchors under the rating, character counter past 80% of a text limit, composed header, quiet sticky submit bar. **Accessibility fix:** keyboard focus on the custom rating/choice controls was invisible (native input is `sr-only`); the label now shows a ring via `has-[:focus-visible]`.
 - **Moderator shell, dashboard, create event, event header/tabs, settings, auth, error pages**: `max-w-6xl` shell, `PageHeader` everywhere, dashboard rows as cards with a stat + quiet actions, login/no-access/not-found as centred compositions.
 - **Results**: stat row (Responses, Questions, Export CSV), answer-kind eyebrow per card, readable bars on a `bg-well` track, wrapping choice labels, `dl` grid for individual responses.
@@ -182,17 +182,17 @@ Ordered roughly by value for the two core jobs.
 
 Handed off to the user to click through the real UI themselves at `http://localhost:3500/login` (login: `hai@khyteteam.com` / see below for current password) while the dev server runs in the background. Session paused here — resume by asking what was found, or re-verifying the server is still up.
 
-**Login password**: was `dyJt4uwcKjcMxCrke6Gy` as of this session. It appeared in earlier terminal/session output, so rotating it is still recommended when convenient:
+**Login password**: rotated 2026-09-18; it lives in the user's password manager and is not recorded here. To rotate again:
 ```
 npm run provision:admin -- --email hai@khyteteam.com --password 'your-new-password'
 ```
-Safe to re-run — updates the existing account rather than duplicating it.
+Safe to re-run — updates the existing account rather than duplicating it. Prefer `npx tsx scripts/provision-admin.ts ...` if the terminal is being logged, since `npm run` echoes its arguments.
 
 ## Outstanding / not yet done
 
 - **Logo, favicon (2026-09-17) and brand pass (2026-09-18) done.** Palette is now the guideline's (primary `#0090e8`, navy `#052c4f`, cyan `#6fdcfa`, yellow `#f2d205` reserved for the "Collecting" status, ink `#020204`), Inter is loaded via `next/font/google` (self-hosted, no third-party request), and four brand moments were added: split blue-gradient login, navy QR poster card on Share, navy stat tile on Feedback, faint Y-motif backdrop on participant/terminal pages. New `inverse` button variant for navy surfaces. The guideline PDF lists the primary as `#00D47E` (a green); the rendered swatch `#0090e8` is what's used. Awaiting the user's manual QA.
 - **`/events/new/preview` (and `/share`, `/results`) return 500**, because `new` falls through to `[eventId]` and the events query is given a non-UUID. Low priority; `notFound()` on an invalid id would fix it.
-- **Not a git repository.** No version control yet, and the UI polish pass changed ~30 files — `git init` now.
+- **Git:** initialised 2026-09-18 and pushed to `https://github.com/HaiDaPlug/feedback` (`main`). `.env.local` is ignored; only `.env.example` is tracked.
 - Participant links are live/open by design (no review gate) — keep events in **Draft** until ready to collect real responses.
-- Admin password has not been rotated yet despite being echoed in terminal output twice now (initial provisioning + this session's recap) — worth doing before this goes anywhere more shared.
+- Admin password rotated 2026-09-18. The previous one appears in earlier transcripts and in this file's git history; it no longer works.
 - See "Improvements we can do next" above for the product backlog.
