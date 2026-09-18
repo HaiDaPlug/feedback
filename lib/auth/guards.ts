@@ -3,6 +3,7 @@ import { and, eq } from 'drizzle-orm';
 import { auth } from './config';
 import { db } from '@/lib/db/client';
 import { events, memberships, organizations, users } from '@/lib/db/schema';
+import { isUuid } from '@/lib/validation/uuid';
 
 /**
  * Server-side authorization guards.
@@ -104,6 +105,8 @@ export async function requireModeratorApi(): Promise<ModeratorContext> {
  * guessing its id.
  */
 export async function assertEventInOrg(eventId: string, orgId: string): Promise<void> {
+  if (!isUuid(eventId)) throw new AuthorizationError('Event not found.', 403);
+
   const [row] = await db
     .select({ id: events.id })
     .from(events)

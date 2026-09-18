@@ -178,6 +178,26 @@ Ordered roughly by value for the two core jobs.
 - **Check in the screenshot harness** as `scripts/ui-check.cjs` (devDependency `playwright-core`; reuse the local Chromium) so future UI work can be verified the same way.
 - **Rotate the admin password** (still the one echoed in earlier terminal output).
 
+## Incident: question loss and fix (2026-09-18)
+
+A moderator's 9-question form ("Doorbell of Dreams") vanished after editing. Cause: editing a form that already had responses cloned it into version 2 with fresh question ids (correct), but the browser kept the old ids. The next autosave deleted version 2's questions and then failed inserting rows whose ids still belonged to version 1 (primary-key collision). With the HTTP driver having no transactions, the delete stuck; every later autosave failed the same way, and the on-screen state hid it until a reload.
+
+Fix (all in place, pinned by `tests/save-questions.test.ts`, which runs the real `saveQuestions` against PGlite and fails on the old code):
+- `lib/db/queries/forms.ts`: upsert first, prune second (a failed write can never empty a version); stale/foreign ids are re-keyed instead of colliding; the upsert only ever updates rows inside the target version; the event pointer moves last; the result is verified before returning.
+- `saveQuestionsAction` returns the canonical ids and reports failures instead of throwing; `QuestionBuilder` adopts the ids via an alias map, has an explicit Save button, and shows a red "not saved" notice on failure.
+- Feedback itself was never at risk: `answers.question_id` and `responses.form_version_id` are `ON DELETE RESTRICT`, so answered rows cannot be deleted (also pinned by a test).
+- Recovery: the 9 questions were copied from version 1 into version 2 (fresh ids); the blank multi-choice question added after the loss sits at position 10.
+
+## Security pass (2026-09-18)
+
+Reviewed auth, guards, tokens, submission endpoint, export, headers, dependencies (`npm audit --omit=dev`: 0). Applied:
+- Sign-in rate limiting per IP (20/15 min) and per email (10/15 min) in `lib/auth/config.ts`, surfaced to the form as a distinct message. Policies in `lib/rate-limit.ts`; tested.
+- Session lifetime 7 days (was 30).
+- Headers: CSP (same-origin everything; inline script/style allowed because Next emits them; `unsafe-eval` dev only), HSTS, Permissions-Policy, site-wide Referrer-Policy with `no-referrer` kept on `/f/*`.
+- Malformed event ids now resolve to "not found" instead of a database error (fixes `/events/new/preview` 500).
+
+Residual risks, by design: the participant token is in the URL, so hosting-provider request logs can contain it (mitigated by rotation and noindex/no-referrer); the rate limiter is per-instance in memory on serverless; CSP permits inline scripts (a nonce-based CSP would need a proxy layer).
+
 ## Manual click-through testing (in progress, 2026-09-14)
 
 Handed off to the user to click through the real UI themselves at `http://localhost:3500/login` (login: `hai@khyteteam.com` / see below for current password) while the dev server runs in the background. Session paused here — resume by asking what was found, or re-verifying the server is still up.
@@ -191,7 +211,7 @@ Safe to re-run — updates the existing account rather than duplicating it. Pref
 ## Outstanding / not yet done
 
 - **Logo, favicon (2026-09-17) and brand pass (2026-09-18) done.** Palette is now the guideline's (primary `#0090e8`, navy `#052c4f`, cyan `#6fdcfa`, yellow `#f2d205` reserved for the "Collecting" status, ink `#020204`), Inter is loaded via `next/font/google` (self-hosted, no third-party request), and four brand moments were added: split blue-gradient login, navy QR poster card on Share, navy stat tile on Feedback, faint Y-motif backdrop on participant/terminal pages. New `inverse` button variant for navy surfaces. The guideline PDF lists the primary as `#00D47E` (a green); the rendered swatch `#0090e8` is what's used. Awaiting the user's manual QA.
-- **`/events/new/preview` (and `/share`, `/results`) return 500**, because `new` falls through to `[eventId]` and the events query is given a non-UUID. Low priority; `notFound()` on an invalid id would fix it.
+- ~~`/events/new/preview` 500~~ fixed 2026-09-18 (`getEvent` and `assertEventInOrg` treat non-UUIDs as not found).
 - **Git:** initialised 2026-09-18 and pushed to `https://github.com/HaiDaPlug/feedback` (`main`). `.env.local` is ignored; only `.env.example` is tracked.
 - Participant links are live/open by design (no review gate) — keep events in **Draft** until ready to collect real responses.
 - Admin password rotated 2026-09-18. The previous one appears in earlier transcripts and in this file's git history; it no longer works.

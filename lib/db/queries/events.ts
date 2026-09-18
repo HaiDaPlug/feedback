@@ -12,6 +12,7 @@ import { generateToken, hashToken, tokenPrefix } from '@/lib/tokens';
 import { decryptToken, encryptToken } from '@/lib/token-crypto';
 import type { FormQuestion } from '@/lib/form/types';
 import type { EventCreateInput } from '@/lib/validation/schemas';
+import { isUuid } from '@/lib/validation/uuid';
 
 /** Event summary rendered on the dashboard list. */
 export type EventSummary = {
@@ -43,6 +44,10 @@ export async function listEvents(orgId: string): Promise<EventSummary[]> {
 }
 
 export async function getEvent(eventId: string, orgId: string) {
+  // A non-UUID from the URL (e.g. /events/new/preview) is "not found", not a
+  // database error.
+  if (!isUuid(eventId)) return null;
+
   const [row] = await db
     .select()
     .from(events)

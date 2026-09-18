@@ -16,12 +16,25 @@ import { QUESTION_TYPES, type QuestionType } from '@/lib/db/schema';
 /**
  * The question builder.
  *
- * Autosave contract: edits are debounced and saved automatically, with a
- * visible state at all times. Nothing is ever silently discarded -- when a save
- * fails the status says so and offers a retry, and the edits stay on screen.
+ * Save contract: edits are debounced and saved automatically, and a Save
+ * button saves immediately. The status is visible at all times. Nothing is
+ * ever silently discarded -- when a save fails a warning says so, the edits
+ * stay on screen, and both the button and the warning offer a retry.
+ *
+ * Ids: the server may re-key questions (it does when a version with
+ * responses is cloned). After every successful save the builder records the
+ * server's id for each question in `idAlias` and sends those ids from then
+ * on, while the on-screen list keeps its original ids so React keys, focus,
+ * and in-flight typing are undisturbed.
  */
 
 const AUTOSAVE_DELAY_MS = 900;
+
+export type SaveResult = {
+  ok: boolean;
+  message?: string;
+  questions?: FormQuestion[];
+};
 
 export function QuestionBuilder({
   eventId,
@@ -31,45 +44,56 @@ export function QuestionBuilder({
 }: {
   eventId: string;
   initialQuestions: FormQuestion[];
-  onSave: (
-    eventId: string,
-    input: { questions: unknown[] },
-  ) => Promise<{ ok: boolean; message?: string }>;
+  onSave: (eventId: string, input: { questions: unknown[] }) => Promise<SaveResult>;
   /** Mirrors every edit upward so the workspace can feed the live preview. */
   onQuestionsChange?: (questions: FormQuestion[]) => void;
 }) {
   const [questions, setQuestions] = useState<FormQuestion[]>(initialQuestions);
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Serialized snapshot of what is known to be persisted, so we do not save on
   // first mount or re-save an unchanged form.
-  const savedSnapshot = useRef(JSON.stringify(initialQuestions));
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initialQuestions));
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Client id -> id the server actually stored it under.
+  const idAlias = useRef(new Map<string, string>());
 
   const issues = useMemo(() => validateForm(questions), [questions]);
+  const dirty = JSON.stringify(questions) !== savedSnapshot;
 
   const save = useCallback(
     async (next: FormQuestion[]) => {
+      if (timer.current) clearTimeout(timer.current);
       const snapshot = JSON.stringify(next);
+      const serverId = (id: string | null) => (id ? (idAlias.current.get(id) ?? id) : null);
       setSaveState('saving');
 
       const result = await onSave(eventId, {
         questions: next.map((question) => ({
-          id: question.id,
+          id: serverId(question.id),
           type: question.type,
           label: question.label,
           helpText: question.helpText,
           required: question.required,
           options: question.options,
-          visibleWhenQuestionId: question.visibleWhenQuestionId,
+          visibleWhenQuestionId: serverId(question.visibleWhenQuestionId),
           visibleWhenOptionId: question.visibleWhenOptionId,
         })),
       });
 
       if (result.ok) {
-        savedSnapshot.current = snapshot;
+        // Adopt the server's ids by position: it saved exactly what we sent,
+        // in order, possibly under different ids.
+        result.questions?.forEach((saved, index) => {
+          const sent = next[index];
+          if (sent && saved.id !== sent.id) idAlias.current.set(sent.id, saved.id);
+        });
+        setSavedSnapshot(snapshot);
+        setSaveError(null);
         setSaveState('saved');
       } else {
+        setSaveError(result.message ?? 'Could not save.');
         setSaveState('error');
       }
     },
@@ -78,8 +102,7 @@ export function QuestionBuilder({
 
   // Debounced autosave.
   useEffect(() => {
-    const snapshot = JSON.stringify(questions);
-    if (snapshot === savedSnapshot.current) return;
+    if (!dirty) return;
 
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => void save(questions), AUTOSAVE_DELAY_MS);
@@ -87,18 +110,16 @@ export function QuestionBuilder({
     return () => {
       if (timer.current) clearTimeout(timer.current);
     };
-  }, [questions, save]);
+  }, [questions, dirty, save]);
 
   // Warn before leaving with unsaved edits -- never imply they were saved.
   useEffect(() => {
     function handler(event: BeforeUnloadEvent) {
-      if (JSON.stringify(questions) !== savedSnapshot.current) {
-        event.preventDefault();
-      }
+      if (dirty) event.preventDefault();
     }
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [questions]);
+  }, [dirty]);
 
   // Live mirror for the workspace preview. Autosave above is untouched.
   useEffect(() => {
@@ -153,6 +174,21 @@ export function QuestionBuilder({
     );
   }
 
+  function change(next: FormQuestion) {
+    setQuestions((prev) => {
+      // A question that stops being a valid rule source (e.g. switched to
+      // multiple selection) can no longer drive other questions.
+      const lostRuleSource = !CONDITION_SOURCE_TYPES.includes(next.type);
+      return prev.map((q) => {
+        if (q.id === next.id) return next;
+        if (lostRuleSource && q.visibleWhenQuestionId === next.id) {
+          return { ...q, visibleWhenQuestionId: null, visibleWhenOptionId: null };
+        }
+        return q;
+      });
+    });
+  }
+
   const count = questions.length;
 
   return (
@@ -163,8 +199,29 @@ export function QuestionBuilder({
           description={
             count > 0 ? `${count} ${count === 1 ? 'question' : 'questions'}` : undefined
           }
-          actions={<SaveIndicator state={saveState} onRetry={() => void save(questions)} />}
+          actions={
+            <>
+              <SaveIndicator state={saveState} onRetry={() => void save(questions)} />
+              <Button
+                type="button"
+                variant={saveState === 'error' ? 'primary' : 'secondary'}
+                size="sm"
+                onClick={() => void save(questions)}
+                disabled={!dirty || saveState === 'saving'}
+              >
+                Save
+              </Button>
+            </>
+          }
         />
+
+        {saveState === 'error' && (
+          <Notice tone="danger" role="alert">
+            <strong className="font-semibold">Your latest edits are not saved.</strong>{' '}
+            {saveError} They are still on this screen; press Save to try again, and
+            don&rsquo;t leave or reload the page until it says Saved.
+          </Notice>
+        )}
 
         {/* Standing reminder -- keeps identifying fields out of forms. */}
         <Notice tone="info">
@@ -196,11 +253,7 @@ export function QuestionBuilder({
                 earlierChoiceQuestions={questions
                   .slice(0, index)
                   .filter((q) => CONDITION_SOURCE_TYPES.includes(q.type))}
-                onChange={(next) =>
-                  setQuestions((prev) =>
-                    prev.map((q) => (q.id === next.id ? next : q)),
-                  )
-                }
+                onChange={change}
                 onRemove={() => remove(question.id)}
                 onMove={(direction) => move(index, direction)}
               />

@@ -14,9 +14,10 @@ import {
   setEventStatus,
   updateEvent,
 } from '@/lib/db/queries/events';
-import { saveQuestions } from '@/lib/db/queries/forms';
+import { QuestionsSaveError, saveQuestions } from '@/lib/db/queries/forms';
 import { getQuestions } from '@/lib/db/queries/events';
 import { validateForm } from '@/lib/form/validate-form';
+import type { FormQuestion } from '@/lib/form/types';
 import {
   eventCreateSchema,
   eventUpdateSchema,
@@ -115,7 +116,7 @@ export async function setEventStatusAction(
 export async function saveQuestionsAction(
   eventId: string,
   input: unknown,
-): Promise<ActionResult & { formVersionId?: string }> {
+): Promise<ActionResult & { formVersionId?: string; questions?: FormQuestion[] }> {
   const moderator = await requireModeratorApi();
   await assertEventInOrg(eventId, moderator.orgId);
 
@@ -129,14 +130,26 @@ export async function saveQuestionsAction(
     return { ok: false, message: 'This event has no form yet.' };
   }
 
-  const result = await saveQuestions(
-    eventId,
-    event.currentFormVersionId,
-    parsed.data.questions,
-  );
+  let result;
+  try {
+    result = await saveQuestions(eventId, event.currentFormVersionId, parsed.data.questions);
+  } catch (error) {
+    // Report rather than throw: the builder keeps the edits on screen and
+    // offers a retry, which is the behaviour that protects the moderator's work.
+    console.error('saveQuestionsAction failed', { eventId, error });
+    return {
+      ok: false,
+      message:
+        error instanceof QuestionsSaveError
+          ? 'The form could not be saved completely. Your edits are still here — try again.'
+          : 'Could not save right now. Your edits are still here — try again in a moment.',
+    };
+  }
 
   revalidatePath(`/events/${eventId}`, 'layout');
-  return { ok: true, formVersionId: result.formVersionId };
+  // The saved questions carry canonical ids (they change when a version is
+  // cloned); the builder adopts them so later saves reference the right rows.
+  return { ok: true, formVersionId: result.formVersionId, questions: result.questions };
 }
 
 // --- Access token ----------------------------------------------------------

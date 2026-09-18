@@ -26,8 +26,12 @@ export function LoginForm() {
     });
 
     if (result?.error) {
-      // Deliberately generic: does not reveal whether the email is registered.
-      setError('Email or password is incorrect.');
+      setError(
+        result.code === 'rate_limited'
+          ? 'Too many sign-in attempts. Please wait 15 minutes and try again.'
+          : // Deliberately generic: does not reveal whether the email is registered.
+            'Email or password is incorrect.',
+      );
       setSubmitting(false);
       return;
     }

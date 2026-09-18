@@ -1,10 +1,21 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import bcrypt from 'bcryptjs';
 import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { users } from '@/lib/db/schema';
+import {
+  checkRateLimit,
+  clientIpForRateLimit,
+  LOGIN_EMAIL_LIMIT,
+  LOGIN_IP_LIMIT,
+} from '@/lib/rate-limit';
 import { credentialsSchema } from '@/lib/validation/schemas';
+
+/** Surfaced to the sign-in form as `result.code`, so it can say why. */
+export class RateLimitedSignin extends CredentialsSignin {
+  code = 'rate_limited';
+}
 
 /**
  * Moderator authentication.
@@ -16,7 +27,9 @@ import { credentialsSchema } from '@/lib/validation/schemas';
  */
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: 'jwt' },
+  // Seven days, not the 30-day default: this is an admin tool that reads
+  // feedback, and a forgotten laptop should not stay signed in for a month.
+  session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
   /**
    * Auth.js rejects requests whose Host header it cannot verify, which protects
    * against host-header injection. Vercel is recognised automatically; any other
@@ -39,11 +52,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
+
+        // Brute-force control: a budget per source address and a budget per
+        // account, so neither one attacker nor one targeted account can be
+        // hammered. Counted before the password check so failures and
+        // successes cost the same. Keys are salted hashes held in memory only.
+        const ip = clientIpForRateLimit(request.headers);
+        const byIp = checkRateLimit(ip, LOGIN_IP_LIMIT);
+        const byEmail = checkRateLimit(email, LOGIN_EMAIL_LIMIT);
+        if (!byIp.allowed || !byEmail.allowed) throw new RateLimitedSignin();
 
         const [user] = await db
           .select()

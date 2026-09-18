@@ -230,6 +230,16 @@ export function QuestionEditor({
           checked={question.required}
           onChange={(e) => update({ required: e.target.checked })}
         />
+
+        {/* Same thing as picking "Multiple selection" in the type list, but
+            discoverable from the question itself. */}
+        {isChoice && (
+          <Checkbox
+            label="Allow choosing more than one"
+            checked={question.type === 'multi_choice'}
+            onChange={(e) => changeType(e.target.checked ? 'multi_choice' : 'single_choice')}
+          />
+        )}
       </div>
 
       {/* --- Help text (revealed on demand) --- */}
