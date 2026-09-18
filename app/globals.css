@@ -1,0 +1,203 @@
+@import 'tailwindcss';
+
+/*
+ * Brand tokens (HelpBnk Brand Guidelines, Sept 2026).
+ *
+ * These mirror `lib/brand.ts`: that file is the source consumed by TypeScript,
+ * and these variables are what Tailwind utilities resolve against. Change both.
+ */
+@theme {
+  /* Primary blue: actions, active states, focus rings, selected controls. */
+  --color-brand: #0090e8;
+  --color-brand-hover: #007ac6;
+  --color-brand-fg: #ffffff;
+  /* Tinted surface for selected / highlighted states. */
+  --color-brand-soft: #e8f4fd;
+  /* Deep brand blue: dark surfaces (QR card, stat tile) and the gradient end. */
+  --color-navy: #052c4f;
+  /* Light brand blue: motif, eyebrows on navy, soft hover on white buttons. */
+  --color-cyan: #6fdcfa;
+  --color-cyan-soft: #e6f8fe;
+  /* The yellow has one job: the live "Collecting" status. */
+  --color-yellow: #f2d205;
+  --color-yellow-soft: #fdf8d6;
+  --color-accent: #f2d205;
+
+  --color-surface: #ffffff;
+  --color-canvas: #f5f8fb;
+  /* One step below canvas: inset wells, code, read-only fields. */
+  --color-well: #eef2f6;
+  --color-ink: #020204;
+  --color-ink-muted: #4f5b66;
+  /* Tertiary text: captions, numerals, placeholders. */
+  --color-ink-faint: #7d8896;
+  --color-hairline: #e2e8ef;
+  /* Slightly stronger divider for hover states and control borders. */
+  --color-hairline-strong: #c9d2dc;
+
+  --color-ok: #15803d;
+  --color-danger: #b91c1c;
+  --color-warn: #b45309;
+
+  /* Elevation. Deliberately quiet: one soft ambient shadow for raised surfaces. */
+  --shadow-card: 0 1px 2px rgb(5 44 79 / 0.04), 0 1px 3px rgb(5 44 79 / 0.04);
+  --shadow-raised: 0 1px 2px rgb(5 44 79 / 0.05), 0 8px 24px -12px rgb(5 44 79 / 0.2);
+}
+
+/*
+ * Inter is the brand typeface, loaded through next/font in `app/layout.tsx`.
+ * It is downloaded at build time and served from this origin: participant
+ * pages still make no third-party request, so a token-bearing URL is never
+ * sent elsewhere as a Referer. `--font-inter` is set on <html> by next/font.
+ */
+@theme inline {
+  --font-sans:
+    var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  margin: 0;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings wrap on balanced lines; numerals line up in tables and stats. */
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/*
+ * Visible, consistent focus for keyboard users across both experiences.
+ * Lives in the base layer so a control that carries its own focus treatment
+ * (inputs use border + ring via `focus:outline-none`) can override it;
+ * an unlayered rule would win over every utility regardless of specificity.
+ */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* Respect reduced-motion preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Utility for content that must clear a phone's home indicator. */
+@utility pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+/* Screen-reader-only text. */
+@utility sr-only-focusable {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+
+  &:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+  }
+}
+
+/*
+ * Type scale. One place to keep headings consistent across the moderator and
+ * participant experiences. Use these instead of ad-hoc text-* combinations.
+ * Inter wants tight tracking at display sizes (the guideline sets headlines
+ * at 0 to negative tracking) and a touch of air at caption sizes.
+ */
+@utility text-display {
+  font-size: 1.875rem;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+@utility text-title {
+  font-size: 1.125rem;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+@utility text-eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* Native select with a consistent chevron (browser defaults vary widely). */
+@utility select-chevron {
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%234f5b66' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'><path d='M4 6l4 4 4-4'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+}
+
+/* Surfaces. */
+@utility card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: 0.875rem;
+  box-shadow: var(--shadow-card);
+}
+
+@utility card-raised {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: 1rem;
+  box-shadow: var(--shadow-raised);
+}
+
+/*
+ * Brand motif: the three-Y icon, very faint, anchored to the top-right of a
+ * page. The guideline uses it this way on its own pages. Same geometry as
+ * `lib/brand-marks.ts`. Keep it on page-level containers only, never on cards.
+ */
+@utility bg-brand-motif {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-6 -6 86.84 112'><path d='M50.25 22.35L57.47 4.76M50.25 22.35L28.3 29.78M50.25 22.35L64.14 41.61M16.44 56.52L4.76 35.63M16.44 56.52L39.53 48.48M16.44 56.52L10.38 71.91M56.24 78.4L70.08 59.63M56.24 78.4L33.91 68.27M56.24 78.4L58.61 95.24' fill='none' stroke='%236fdcfa' stroke-opacity='0.28' stroke-width='9.53' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right -4rem top -3rem;
+  background-size: 18rem auto;
+
+  @media (min-width: 640px) {
+    background-position: right -5rem top -4rem;
+    background-size: 26rem auto;
+  }
+}
